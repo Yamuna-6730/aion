@@ -6,6 +6,7 @@ from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from app.core.logger import llm_logger
 from app.llm.exceptions import ParsingError
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -28,16 +29,14 @@ class LLMParser:
     def extract_json(self, raw_output: str) -> str:
         cleaned = self._strip_markdown(raw_output).strip()
         if self._is_json(cleaned):
+            llm_logger.debug("LLM parser accepted full response as JSON", payload=cleaned)
             return cleaned
 
-        start = self._find_json_start(cleaned)
-        end = self._find_json_end(cleaned)
-        if start == -1 or end == -1 or end <= start:
+        candidate = self._find_json_fragment(cleaned)
+        if candidate is None:
+            llm_logger.debug("LLM parser found no JSON fragment", raw_output=raw_output, cleaned_output=cleaned)
             raise ParsingError("LLM response did not contain a JSON object or array.")
-
-        candidate = cleaned[start : end + 1]
-        if not self._is_json(candidate):
-            raise ParsingError("Extracted LLM JSON fragment is invalid.")
+        llm_logger.debug("LLM parser extracted JSON fragment", payload=candidate)
         return candidate
 
     def _strip_markdown(self, raw_output: str) -> str:
@@ -53,13 +52,14 @@ class LLMParser:
             return False
         return True
 
-    def _find_json_start(self, value: str) -> int:
-        object_start = value.find("{")
-        array_start = value.find("[")
-        candidates = [index for index in (object_start, array_start) if index != -1]
-        return min(candidates) if candidates else -1
-
-    def _find_json_end(self, value: str) -> int:
-        object_end = value.rfind("}")
-        array_end = value.rfind("]")
-        return max(object_end, array_end)
+    def _find_json_fragment(self, value: str) -> str | None:
+        decoder = json.JSONDecoder()
+        for index, char in enumerate(value):
+            if char not in "[{":
+                continue
+            try:
+                _, end = decoder.raw_decode(value[index:])
+            except json.JSONDecodeError:
+                continue
+            return value[index : index + end]
+        return None
