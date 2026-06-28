@@ -292,3 +292,57 @@ def test_strategy_api_returns_mission_intelligence() -> None:
     payload = response.json()
     assert payload["industry"] == "Manufacturing"
     assert payload["recommended_agents"][0]["name"] == "Market"
+
+
+@pytest.mark.asyncio
+async def test_mission_repository_casts_estimated_duration_for_integer_column() -> None:
+    client = FakeSupabaseClient()
+    repository = MissionRepository(client=client)
+
+    await repository.update_estimates(
+        "mission_001",
+        estimated_duration=1.4,
+        estimated_cost=0.0,
+        confidence=0.5,
+    )
+
+    payload = client.table_instance.update_payload
+    assert payload is not None
+    assert payload["estimated_duration"] == 1
+    assert isinstance(payload["estimated_duration"], int)
+
+
+@pytest.mark.asyncio
+async def test_mission_repository_stores_recommendations_inside_metadata() -> None:
+    class MetadataTable(FakeSupabaseTable):
+        def __init__(self) -> None:
+            super().__init__()
+            self.select_called = False
+
+        def select(self, value: str) -> MetadataTable:
+            self.select_called = True
+            return self
+
+        def single(self) -> MetadataTable:
+            return self
+
+        def execute(self) -> FakeSupabaseResponse:
+            if self.select_called and self.update_payload is None:
+                self.select_called = False
+                return FakeSupabaseResponse({"id": "mission_001", "metadata": {"existing": True}})
+            return super().execute()
+
+    class MetadataClient(FakeSupabaseClient):
+        def __init__(self) -> None:
+            self.table_instance = MetadataTable()
+
+    client = MetadataClient()
+    repository = MissionRepository(client=client)
+
+    await repository.update_recommendations("mission_001", {"companies": []})
+
+    payload = client.table_instance.update_payload
+    assert payload is not None
+    assert "recommendations" not in payload
+    assert payload["metadata"]["existing"] is True
+    assert payload["metadata"]["recommendations"] == {"companies": []}

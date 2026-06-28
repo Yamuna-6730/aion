@@ -7,6 +7,7 @@ from typing import Any
 
 from app.core.exceptions import ResourceNotFoundError
 from app.core.logger import app_logger
+from app.schemas.planner import ExecutionBlueprint
 from app.schemas.strategy import MissionIntelligence, MissionStatus
 from app.supabase.client import SupabaseClient
 
@@ -66,6 +67,66 @@ class MissionRepository:
             mission_id,
             {
                 "status": status.value,
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
+    async def update_planner(self, mission_id: str, planner_output: ExecutionBlueprint | dict[str, Any]) -> dict[str, Any]:
+        output = planner_output.model_dump(mode="json") if isinstance(planner_output, ExecutionBlueprint) else planner_output
+        return await self._update(
+            mission_id,
+            {
+                "planner_output": output,
+                "planner_status": "COMPLETED",
+                "confidence": output.get("confidence"),
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
+    async def update_execution_graph(self, mission_id: str, execution_graph: dict[str, Any]) -> dict[str, Any]:
+        return await self._update(
+            mission_id,
+            {
+                "execution_graph": execution_graph,
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
+    async def update_estimates(
+        self,
+        mission_id: str,
+        *,
+        estimated_duration: float,
+        estimated_cost: float,
+        confidence: float,
+    ) -> dict[str, Any]:
+        return await self._update(
+            mission_id,
+            {
+                "estimated_duration": int(round(estimated_duration)),
+                "estimated_cost": estimated_cost,
+                "confidence": confidence,
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
+    async def update_metadata(self, mission_id: str, metadata: dict[str, Any]) -> dict[str, Any]:
+        return await self._update(
+            mission_id,
+            {
+                "metadata": metadata,
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
+    async def update_recommendations(self, mission_id: str, recommendations: dict[str, Any]) -> dict[str, Any]:
+        mission = await self.get_mission(mission_id)
+        metadata = mission.get("metadata") or {}
+        metadata["recommendations"] = recommendations
+        return await self._update(
+            mission_id,
+            {
+                "metadata": metadata,
                 "updated_at": datetime.now(UTC).isoformat(),
             },
         )
