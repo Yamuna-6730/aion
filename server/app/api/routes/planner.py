@@ -1,14 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.schemas.planner import PlannerRunRequest, PlannerRunResponse
+from app.services.planner import PlannerService
 
 router = APIRouter(prefix="/planner", tags=["planner"])
 
 
-@router.post("/run")
-async def run_planner() -> dict[str, object]:
-    return {
-        "mission_id": "mission_mock_001",
-        "status": "accepted",
-        "planner": {"state": "queued", "message": "Planner runtime placeholder accepted the request."},
-        "execution_graph": {"nodes": [], "edges": []},
-    }
+def get_planner_service() -> PlannerService:
+    return PlannerService()
 
+
+@router.post("/run")
+async def run_planner(
+    request: PlannerRunRequest,
+    service: PlannerService = Depends(get_planner_service),
+) -> PlannerRunResponse:
+    return await service.run_planner(request.mission_id)
