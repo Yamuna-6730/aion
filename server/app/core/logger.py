@@ -21,4 +21,4 @@ app_logger = logger.bind(component="application")
 api_logger = logger.bind(component="api")
 planner_logger = logger.bind(component="planner")
 agent_logger = logger.bind(component="agent")
-
+llm_logger = logger.bind(component="llm")

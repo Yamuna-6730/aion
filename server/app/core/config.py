@@ -1,7 +1,11 @@
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+SERVER_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -12,8 +16,40 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
     log_level: str = "INFO"
     request_timeout_seconds: int = 30
+    google_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GOOGLE_API_KEY", "AION_GOOGLE_API_KEY"),
+    )
+    llm_provider: str = Field(
+        default="gemini",
+        validation_alias=AliasChoices("LLM_PROVIDER", "AION_LLM_PROVIDER"),
+    )
+    llm_model: str = Field(
+        default="gemini-2.5-flash",
+        validation_alias=AliasChoices("LLM_MODEL", "AION_LLM_MODEL"),
+    )
+    supabase_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SUPABASE_URL", "AION_SUPABASE_URL"),
+    )
+    supabase_service_role_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SUPABASE_SERVICE_ROLE_KEY", "AION_SUPABASE_SERVICE_ROLE_KEY"),
+    )
 
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="AION_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(ROOT_DIR / ".env", SERVER_DIR / ".env", ".env"),
+        env_prefix="AION_",
+        extra="ignore",
+    )
+
+    @property
+    def SUPABASE_URL(self) -> str | None:
+        return self.supabase_url
+
+    @property
+    def SUPABASE_SERVICE_ROLE_KEY(self) -> str | None:
+        return self.supabase_service_role_key
 
 
 @lru_cache
@@ -22,4 +58,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-

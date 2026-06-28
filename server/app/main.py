@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.middleware.logging import LoggingMiddleware
 from app.api.middleware.request_timing import RequestTimingMiddleware
-from app.api.routes import agents, companies, health, missions, planner, recommendations, signals
+from app.api.routes import agents, companies, health, llm, missions, planner, recommendations, signals, strategy
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logger import configure_logging
@@ -50,8 +50,9 @@ def create_app() -> FastAPI:
     application.include_router(agents.router, prefix=settings.api_v1_prefix)
     application.include_router(signals.router, prefix=settings.api_v1_prefix)
     application.include_router(recommendations.router, prefix=settings.api_v1_prefix)
+    application.include_router(llm.router, prefix=settings.api_v1_prefix)
+    application.include_router(strategy.router, prefix=settings.api_v1_prefix)
     return application
 
 
 app = create_app()
-

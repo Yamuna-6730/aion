@@ -17,4 +17,6 @@ __all__ = [
     "RecommendationService",
     "SignalService",
 ]
+from app.services.strategy_service import StrategyService
 
+__all__ = ["StrategyService"]
