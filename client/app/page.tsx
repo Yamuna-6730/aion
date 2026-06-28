@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/store/AppContext';
+import Image from "next/image";
+import logo from "@/app/logo.png";
 import {
   Compass,
   ArrowRight,
@@ -52,11 +54,24 @@ export default function LandingPage() {
 
       {/* Glass Navbar */}
       <nav className="fixed top-0 left-0 right-0 h-16 glass-navbar flex items-center justify-between px-6 md:px-12 z-50">
-        <Link href="/" className="flex items-center gap-2">
+        {/* <Link href="/" className="flex items-center gap-2">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-tr from-accent-blue to-accent-purple shadow-md">
-            <span className="font-mono font-bold text-white text-base">A</span>
+            <img src={logo} alt="AION Logo" className="font-mono font-bold text-white text-base" />
           </div>
           <span className="font-sans font-bold text-lg tracking-wider text-white">AION</span>
+        </Link> */}
+
+        <Link href="/" className="flex items-center gap-3">
+          <Image
+            src={logo}
+            alt="AION Logo"
+            priority
+            className="h-10 w-auto"
+          />
+
+          <span className="font-bold text-2xl tracking-tight">
+            AION
+          </span>
         </Link>
 
         <div className="hidden md:flex items-center gap-8 text-xs font-semibold tracking-wider text-zinc-400">
