@@ -84,6 +84,22 @@ def test_prompt_engine_replaces_template_placeholders() -> None:
     assert "Return ONLY valid JSON" in prompt
 
 
+def test_planner_prompt_includes_available_agents() -> None:
+    prompt = PromptEngine().build_prompt(
+        system_role="Planner",
+        mission="Find best-fit accounts.",
+        memory={"Available Agents": [{"name": "market"}, {"name": "recommendation"}]},
+        agent_name="planner",
+        expected_schema=DiscoveryResult,
+        template_name="planner",
+    )
+
+    assert "{{available_agents}}" not in prompt
+    assert '"name": "market"' in prompt
+    assert '"name": "recommendation"' in prompt
+    assert "\nplanner\n" not in prompt
+
+
 @pytest.mark.asyncio
 async def test_llm_manager_uses_cache_for_identical_prompts() -> None:
     provider = FakeProvider()

@@ -120,10 +120,37 @@ class GeminiProvider(BaseLLM):
         return genai
 
     def _extract_text(self, response: Any) -> str:
-        text = getattr(response, "text", None)
-        if isinstance(text, str):
+        try:
+            text = getattr(response, "text", None)
+        except Exception as exc:
+            llm_logger.error(
+                "Gemini response text accessor failed",
+                error=str(exc),
+                raw_response=repr(response),
+            )
+            text = None
+        if isinstance(text, str) and text.strip():
             return text
+        candidate_text = self._extract_candidate_text(response)
+        if candidate_text:
+            return candidate_text
+        llm_logger.error("Gemini response did not include text output", raw_response=repr(response))
         raise ProviderError("Gemini response did not include text output.")
+
+    def _extract_candidate_text(self, response: Any) -> str | None:
+        candidates = getattr(response, "candidates", None) or []
+        parts: list[str] = []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            for part in getattr(content, "parts", None) or []:
+                text = getattr(part, "text", None)
+                if isinstance(text, str):
+                    parts.append(text)
+        output = "".join(parts).strip()
+        if output:
+            llm_logger.debug("Gemini response text extracted from candidate parts", text=output)
+            return output
+        return None
 
     def _extract_usage(self, response: Any) -> TokenUsage | None:
         usage = getattr(response, "usage_metadata", None)

@@ -15,4 +15,4 @@ async def run_planner(
     request: PlannerRunRequest,
     service: PlannerService = Depends(get_planner_service),
 ) -> PlannerRunResponse:
-    return await service.run_planner(request.mission_id)
+    return await service.run_planner(str(request.mission_id))

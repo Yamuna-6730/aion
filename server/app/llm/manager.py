@@ -55,6 +55,12 @@ class LLMManager:
             expected_schema=expected_schema,
             template_name=template_name,
         )
+        llm_logger.debug(
+            "LLM manager built prompt",
+            agent_name=agent_name,
+            template_name=template_name,
+            prompt=prompt,
+        )
         cache_key = self.cache.build_key(prompt)
         metadata = PromptMetadata(
             agent_name=agent_name,

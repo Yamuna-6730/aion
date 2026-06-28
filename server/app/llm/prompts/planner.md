@@ -26,17 +26,25 @@ STRATEGY
 AVAILABLE AGENTS
 ------------------------
 
-{{agent}}
+{{available_agents}}
 
 ------------------------
 OUTPUT REQUIREMENTS
 ------------------------
 
-Choose only the agents required for this mission.
+Choose only the agents required for this mission from AVAILABLE AGENTS.
 
 Prefer parallel execution whenever dependencies allow.
 
-RecommendationAgent MUST always execute last.
+The agent named "recommendation" MUST always execute last when it is selected.
+
+Do NOT select the "planner", "logger", "notification", "export", "summary", or "simulation" agents unless the mission explicitly requires them.
+
+Use each selected agent name exactly as it appears in AVAILABLE AGENTS.
+
+Populate selected_agents, execution_order, parallel_groups, nodes, and edges for the same selected agents.
+
+Use node.id values that exactly match selected agent names.
 
 Every node must start with status "PENDING".
 

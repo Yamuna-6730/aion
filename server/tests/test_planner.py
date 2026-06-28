@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from typing import Any
+from uuid import uuid4
 
 import pytest
 
@@ -251,6 +252,8 @@ def test_graph_validator_rejects_cycles() -> None:
 
 
 def test_planner_api_uses_service_dependency() -> None:
+    mission_id = str(uuid4())
+
     class FakeService:
         async def run_planner(self, mission_id: str) -> dict[str, Any]:
             return {
@@ -266,8 +269,23 @@ def test_planner_api_uses_service_dependency() -> None:
 
     app.dependency_overrides[get_planner_service] = lambda: FakeService()
     client = TestClient(app)
-    response = client.post("/api/v1/planner/run", json=PlannerRunRequest(mission_id="mission_001").model_dump())
+    response = client.post("/api/v1/planner/run", json={"mission_id": mission_id})
     app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json()["mission_id"] == "mission_001"
+    assert response.json()["mission_id"] == mission_id
+
+
+def test_planner_api_rejects_invalid_uuid_before_repository_lookup() -> None:
+    mission_id = str(uuid4())
+
+    class FakeService:
+        async def run_planner(self, mission_id: str) -> dict[str, Any]:
+            raise AssertionError("Service should not be called for invalid mission ids")
+
+    app.dependency_overrides[get_planner_service] = lambda: FakeService()
+    client = TestClient(app)
+    response = client.post("/api/v1/planner/run", json={"mission_id": mission_id + mission_id})
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 422

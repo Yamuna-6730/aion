@@ -36,11 +36,22 @@ class LLMParser:
         if candidate is None:
             llm_logger.debug("LLM parser found no JSON fragment", raw_output=raw_output, cleaned_output=cleaned)
             raise ParsingError("LLM response did not contain a JSON object or array.")
+        try:
+            json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            llm_logger.error(
+                "LLM parser extracted invalid JSON fragment",
+                error=str(exc),
+                fragment=candidate,
+                raw_output=raw_output,
+            )
+            raise ParsingError(f"Extracted LLM JSON fragment is invalid: {exc}") from exc
         llm_logger.debug("LLM parser extracted JSON fragment", payload=candidate)
         return candidate
 
     def _strip_markdown(self, raw_output: str) -> str:
-        match = self._code_fence_pattern.search(raw_output)
+        raw_output = raw_output.strip()
+        match = self._code_fence_pattern.fullmatch(raw_output)
         if match:
             return match.group(1)
         return raw_output.replace("```json", "").replace("```", "")

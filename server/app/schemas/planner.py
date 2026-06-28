@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -11,7 +12,7 @@ class PlannerSchemaBase(BaseModel):
 
 
 class PlannerRunRequest(PlannerSchemaBase):
-    mission_id: str = Field(min_length=1)
+    mission_id: UUID
 
 
 class AgentCapability(PlannerSchemaBase):
