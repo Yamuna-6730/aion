@@ -33,6 +33,7 @@ class PlannerAgent(BaseAgent):
         return bool(task.mission_id and task.context.get("mission"))
 
     async def run(self, task: AgentTask) -> AgentResponse:
+        agent_logger.debug("Planner Agent run started", mission_id=task.mission_id)
         started = time.perf_counter()
         mission = task.context.get("mission", {})
         available_agents = task.context.get("available_agents", [])

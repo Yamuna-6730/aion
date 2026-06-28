@@ -59,6 +59,15 @@ def test_parser_extracts_markdown_json_and_validates_schema() -> None:
     assert result.summary == "ready"
 
 
+def test_parser_skips_non_json_brackets_before_json() -> None:
+    parser = LLMParser()
+    raw = 'Plan: [market, hiring] should run first. {"summary":"ready"} Done.'
+
+    result = parser.parse_json(raw, DiscoveryResult)
+
+    assert result.summary == "ready"
+
+
 def test_prompt_engine_replaces_template_placeholders() -> None:
     prompt = PromptEngine().build_prompt(
         system_role="You are the strategy runtime.",

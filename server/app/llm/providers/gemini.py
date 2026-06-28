@@ -40,9 +40,17 @@ class GeminiProvider(BaseLLM):
                     "temperature": request.temperature,
                     "top_p": request.top_p,
                     "max_output_tokens": request.max_tokens,
+                    "response_mime_type": "application/json",
                 },
             )
             output = self._extract_text(response)
+            llm_logger.debug(
+                "Gemini raw response extracted",
+                provider=self.provider_name,
+                model=self.model_name,
+                raw_response=repr(response),
+                text=output,
+            )
             latency_ms = (time.perf_counter() - started) * 1000
             token_usage = self._extract_usage(response)
             llm_logger.info(

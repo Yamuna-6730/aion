@@ -126,6 +126,12 @@ class LLMManager:
             max_tokens=max_tokens,
             use_cache=use_cache,
         )
+        llm_logger.debug(
+            "LLM manager raw response before parsing",
+            agent_name=agent_name,
+            template_name=template_name,
+            output=response.output,
+        )
         return self.parser.parse_json(response.output, response_model)
 
     async def health_check(self) -> dict[str, Any]:
