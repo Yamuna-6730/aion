@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=(ROOT_DIR / ".env", SERVER_DIR / ".env", ".env"),
-        env_prefix="AION_",
+        env_prefix="",
         extra="ignore",
     )
 
