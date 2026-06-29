@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from typing import Any
-from pydantic import BaseModel
-from app.schemas.strategy import MissionStatus
+from pydantic import BaseModel, Field
 
 
 class MissionRunRequest(BaseModel):
     mission_id: str
+
+
+class MissionCreateRequest(BaseModel):
+    title: str = Field(min_length=1)
+    objective: str = Field(min_length=1)
+    domain: str | None = None
+    mission_type: str | None = None
+    created_by: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class MissionOrchestratorResponse(BaseModel):

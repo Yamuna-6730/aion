@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -19,13 +18,31 @@ class MissionRepository:
         self.client = client or SupabaseClient.get_client()
         self.table_name = "missions"
 
-    async def create_mission(self, *, title: str, objective: str) -> dict[str, Any]:
+    async def create_mission(
+        self,
+        *,
+        title: str,
+        objective: str,
+        domain: str | None = None,
+        mission_type: str | None = None,
+        created_by: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         payload = {
             "title": title,
             "objective": objective,
             "status": MissionStatus.CREATED.value,
+            "shared_memory": {},
             "updated_at": datetime.now(UTC).isoformat(),
         }
+        if domain is not None:
+            payload["domain"] = domain
+        if mission_type is not None:
+            payload["mission_type"] = mission_type
+        if created_by is not None:
+            payload["created_by"] = created_by
+        if metadata is not None:
+            payload["metadata"] = metadata
         return await asyncio.to_thread(self._insert, payload)
 
     async def get_mission(self, mission_id: str) -> dict[str, Any]:
@@ -79,6 +96,7 @@ class MissionRepository:
                 "planner_output": output,
                 "planner_status": "COMPLETED",
                 "confidence": output.get("confidence"),
+                "status": MissionStatus.PLANNER_COMPLETED.value,
                 "updated_at": datetime.now(UTC).isoformat(),
             },
         )
@@ -132,10 +150,13 @@ class MissionRepository:
         )
 
     async def update_shared_memory(self, mission_id: str, shared_memory: dict[str, Any]) -> dict[str, Any]:
+        mission = await self.get_mission(mission_id)
+        merged = dict(mission.get("shared_memory") or {})
+        merged.update(shared_memory)
         return await self._update(
             mission_id,
             {
-                "shared_memory": shared_memory,
+                "shared_memory": merged,
                 "updated_at": datetime.now(UTC).isoformat(),
             },
         )
@@ -148,10 +169,7 @@ class MissionRepository:
         return data if isinstance(data, list) else []
 
     def _insert(self, payload: dict[str, Any]) -> dict[str, Any]:
-        result = self._execute_with_schema_fallback(
-            lambda candidate: self.client.table(self.table_name).insert(candidate),
-            payload,
-        )
+        result = self.client.table(self.table_name).insert(payload).execute()
         data = self._response_data(result)
         if isinstance(data, list) and data:
             return data[0]
@@ -162,10 +180,7 @@ class MissionRepository:
 
     async def _update(self, mission_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         result = await asyncio.to_thread(
-            lambda: self._execute_with_schema_fallback(
-                lambda candidate: self.client.table(self.table_name).update(candidate).eq("id", mission_id),
-                payload,
-            )
+            lambda: self.client.table(self.table_name).update(payload).eq("id", mission_id).execute()
         )
         data = self._response_data(result)
         if isinstance(data, list) and data:
@@ -176,29 +191,3 @@ class MissionRepository:
 
     def _response_data(self, response: Any) -> Any:
         return getattr(response, "data", response)
-
-    def _execute_with_schema_fallback(self, builder_factory: Any, payload: dict[str, Any]) -> Any:
-        candidate = payload.copy()
-        removed_columns: list[str] = []
-        while True:
-            try:
-                return builder_factory(candidate).execute()
-            except Exception as exc:
-                missing_column = self._missing_schema_column(exc)
-                if missing_column is None or missing_column not in candidate:
-                    raise
-                removed_columns.append(missing_column)
-                candidate.pop(missing_column)
-                app_logger.warning(
-                    "Retrying Supabase write without missing column",
-                    table=self.table_name,
-                    column=missing_column,
-                    removed_columns=removed_columns,
-                )
-
-    def _missing_schema_column(self, exc: Exception) -> str | None:
-        message = str(exc)
-        match = re.search(r"Could not find the '([^']+)' column", message)
-        if match:
-            return match.group(1)
-        return None

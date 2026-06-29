@@ -96,6 +96,8 @@ class RecommendationAgent(BaseAgent):
             except Exception as exc:
                 agent_logger.error("Recommendation extraction failed", mission_id=task.mission_id, error=str(exc))
                 companies = []
+            if not companies:
+                companies = self._fallback_recommendations(profiles)
 
         # Ensure clean ranking
         companies = self._rank_companies(companies)
@@ -176,3 +178,26 @@ class RecommendationAgent(BaseAgent):
         if not companies:
             return 0.0
         return round(sum(c.confidence for c in companies) / len(companies), 3)
+
+    def _fallback_recommendations(self, profiles: list[Any]) -> list[ScoredCompany]:
+        companies: list[ScoredCompany] = []
+        for profile in profiles:
+            if not isinstance(profile, dict):
+                continue
+            confidence = float(profile.get("confidence") or 0.35)
+            companies.append(
+                ScoredCompany(
+                    company_name=str(profile.get("company_name") or "Unknown company"),
+                    website=str(profile.get("website") or ""),
+                    priority_score=min(max(confidence, 0.0), 1.0),
+                    confidence=confidence,
+                    why_selected="Fallback recommendation generated from Business DNA profile evidence.",
+                    strengths=profile.get("strengths") or [],
+                    risks=profile.get("risks") or [],
+                    recommended_personas=profile.get("buying_personas") or [],
+                    recommended_use_cases=profile.get("use_cases") or [],
+                    next_action="Manually validate fit and enrich account research.",
+                    scoring_breakdown={"profile_confidence": confidence},
+                )
+            )
+        return companies

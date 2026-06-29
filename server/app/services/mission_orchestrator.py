@@ -51,7 +51,8 @@ class MissionOrchestratorService:
             app_logger.info("Mission orchestration completed", mission_id=mission_id)
 
             database["missions"] = True
-            shared_memory = planner_response.shared_memory or {}
+            mission = await self.mission_repository.get_mission(mission_id)
+            shared_memory = mission.get("shared_memory") or planner_response.shared_memory or {}
             if "market_discovery" in shared_memory:
                 database["market_discovery_results"] = True
             if "business_dna" in shared_memory:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from uuid import uuid4
 
 from app.agents.base.task import AgentTask
@@ -48,6 +49,11 @@ class StrategyService:
             response = await self.agent.run(task)
             intelligence = MissionIntelligence.model_validate(response.output)
             await self.mission_repository.update_strategy(mission_id, intelligence)
+            if hasattr(self.mission_repository, "update_shared_memory"):
+                await self.mission_repository.update_shared_memory(
+                    mission_id,
+                    {"strategy": intelligence.model_dump(mode="json")},
+                )
             app_logger.info(
                 "Strategy analysis persisted",
                 mission_id=mission_id,
@@ -80,6 +86,11 @@ class StrategyService:
             response = await self.agent.run(task)
             intelligence = MissionIntelligence.model_validate(response.output)
             await self.mission_repository.update_strategy(mission_id, intelligence)
+            if hasattr(self.mission_repository, "update_shared_memory"):
+                await self.mission_repository.update_shared_memory(
+                    mission_id,
+                    {"strategy": intelligence.model_dump(mode="json")},
+                )
             app_logger.info(
                 "Strategy analysis persisted",
                 mission_id=mission_id,

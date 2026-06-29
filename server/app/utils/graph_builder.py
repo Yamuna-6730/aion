@@ -50,12 +50,26 @@ def build_execution_graph(
 
     if not edges:
         edges = _edges_from_dependencies(nodes, available_agents)
+    else:
+        edges = [_normalize_edge(edge) for edge in edges]
 
     return blueprint.model_copy(
         update={
             "selected_agents": [node.id for node in nodes],
             "nodes": nodes,
             "edges": edges,
+        }
+    )
+
+
+def _normalize_edge(edge: GraphEdge) -> GraphEdge:
+    source = normalize_agent_name(edge.source)
+    target = normalize_agent_name(edge.target)
+    return edge.model_copy(
+        update={
+            "id": edge.id or f"{source}-{target}",
+            "source": source,
+            "target": target,
         }
     )
 

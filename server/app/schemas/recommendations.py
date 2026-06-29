@@ -24,7 +24,7 @@ class ScoredCompany(RecommendationSchemaBase):
     recommended_personas: list[str] = Field(default_factory=list)
     recommended_use_cases: list[str] = Field(default_factory=list)
     next_action: str | None = None
-    score_breakdown: dict[str, float] = Field(default_factory=dict)
+    scoring_breakdown: dict[str, float] = Field(default_factory=dict, alias="score_breakdown")
 
 
 class RecommendationExtractionResult(RecommendationSchemaBase):

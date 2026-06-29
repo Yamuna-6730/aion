@@ -23,9 +23,10 @@ class BusinessDNAProfile(BusinessDNASchemaBase):
     technology_signals: list[str] = Field(default_factory=list)
     digital_transformation_signals: list[str] = Field(default_factory=list)
     buying_personas: list[str] = Field(default_factory=list)
-    likely_use_cases: list[str] = Field(default_factory=list)
-    business_strengths: list[str] = Field(default_factory=list)
-    business_risks: list[str] = Field(default_factory=list)
+    use_cases: list[str] = Field(default_factory=list, alias="likely_use_cases")
+    strengths: list[str] = Field(default_factory=list, alias="business_strengths")
+    risks: list[str] = Field(default_factory=list, alias="business_risks")
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     reasoning: str | None = None
 

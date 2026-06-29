@@ -46,9 +46,10 @@ class BusinessDNAService:
         # Build shared memory from stored market discovery
         market_discovery_memory = self._build_market_memory(market_rows)
 
-        shared_memory: dict[str, Any] = {
+        shared_memory: dict[str, Any] = dict(mission.get("shared_memory") or {})
+        shared_memory.update({
             "market_discovery": market_discovery_memory,
-        }
+        })
 
         task = AgentTask(
             mission_id=mission_id,
@@ -109,34 +110,47 @@ class BusinessDNAService:
         companies = []
         scraped_pages = []
         for row in rows:
+            metadata = row.get("firecrawl_metadata") or {}
+            company_payload = metadata.get("company") if isinstance(metadata, dict) else None
+            if isinstance(company_payload, dict):
+                company = company_payload
+            else:
+                company = {
+                    "company_name": row.get("title"),
+                    "website": row.get("url"),
+                    "summary": row.get("snippet"),
+                    "evidence": [],
+                    "metadata": metadata if isinstance(metadata, dict) else {},
+                }
+            company.setdefault("company_name", row.get("title"))
+            company.setdefault("website", row.get("url"))
+            company.setdefault("summary", row.get("snippet"))
+            company.setdefault("evidence", metadata.get("evidence", []) if isinstance(metadata, dict) else [])
+            company.setdefault("metadata", metadata if isinstance(metadata, dict) else {})
+            company.setdefault("products", [])
+            company.setdefault("services", [])
+            company.setdefault("technologies", [])
+            company.setdefault("use_cases", [])
             company: dict[str, Any] = {
-                "company_name": row.get("company_name"),
-                "website": row.get("website"),
-                "summary": row.get("summary"),
-                "industry": row.get("industry"),
-                "country": row.get("country"),
-                "headquarters": row.get("headquarters"),
-                "products": row.get("products") or [],
-                "services": row.get("services") or [],
-                "technologies": row.get("technologies") or [],
-                "use_cases": row.get("use_cases") or [],
-                "evidence": row.get("evidence") or [],
-                "metadata": row.get("metadata") or {},
+                "company_name": company.get("company_name"),
+                "website": company.get("website"),
+                "summary": company.get("summary"),
+                "industry": company.get("industry"),
+                "country": company.get("country"),
+                "headquarters": company.get("headquarters"),
+                "products": company.get("products") or [],
+                "services": company.get("services") or [],
+                "technologies": company.get("technologies") or [],
+                "use_cases": company.get("use_cases") or [],
+                "evidence": company.get("evidence") or [],
+                "metadata": company.get("metadata") or {},
             }
             companies.append(company)
             # Reconstruct a scraped page payload from stored company data for LLM context
             page: dict[str, Any] = {
-                "url": row.get("website"),
-                "title": row.get("company_name"),
-                "content": (
-                    f"{row.get('summary') or ''}\n"
-                    f"Industry: {row.get('industry') or ''}\n"
-                    f"Country: {row.get('country') or ''}\n"
-                    f"Products: {', '.join(row.get('products') or [])}\n"
-                    f"Services: {', '.join(row.get('services') or [])}\n"
-                    f"Technologies: {', '.join(row.get('technologies') or [])}\n"
-                    f"Use cases: {', '.join(row.get('use_cases') or [])}"
-                ),
+                "url": row.get("url"),
+                "title": row.get("title"),
+                "content": row.get("firecrawl_markdown") or company.get("summary") or "",
             }
             scraped_pages.append(page)
         return {

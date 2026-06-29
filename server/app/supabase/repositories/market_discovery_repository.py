@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from typing import Any
+from urllib.parse import urlparse
 
 from app.core.exceptions import AionError
 from app.core.logger import app_logger
@@ -25,8 +25,7 @@ class MarketDiscoveryRepository:
         if not companies:
             return []
         payload = [self._row(mission_id, company) for company in companies]
-        # Use upsert on mission_id + website to avoid duplicates
-        result = await asyncio.to_thread(lambda: self._upsert_with_schema_fallback(mission_id, payload))
+        result = await asyncio.to_thread(lambda: self.client.table(self.table_name).insert(payload).execute())
         data = getattr(result, "data", result)
         if not isinstance(data, list):
             raise MarketDiscoveryPersistenceError("Market discovery upsert returned an unexpected response.")
@@ -59,53 +58,40 @@ class MarketDiscoveryRepository:
         data = getattr(result, "data", result)
         return data if isinstance(data, list) else []
 
-    def _upsert_with_schema_fallback(self, mission_id: str, payload: list[dict[str, Any]]) -> Any:
-        candidate_payload = [dict(row) for row in payload]
-        removed_columns: list[str] = []
-        while True:
-            try:
-                return self.client.table(self.table_name).upsert(candidate_payload, on_conflict="mission_id,website").execute()
-            except Exception as exc:
-                missing_column = self._missing_schema_column(exc)
-                if missing_column is None:
-                    raise
-                removed_columns.append(missing_column)
-                for row in candidate_payload:
-                    row.pop(missing_column, None)
-                app_logger.warning(
-                    "Retrying market discovery Supabase write without missing column",
-                    mission_id=mission_id,
-                    table=self.table_name,
-                    column=missing_column,
-                    removed_columns=removed_columns,
-                    payload=candidate_payload,
-                    error=str(exc),
-                )
-
-    def _missing_schema_column(self, exc: Exception) -> str | None:
-        message = str(exc)
-        match = re.search(r"Could not find the '([^']+)' column", message)
-        if match:
-            return match.group(1)
-        return None
-
     def _row(self, mission_id: str, company: DiscoveredCompany) -> dict[str, Any]:
+        evidence = [item.model_dump(mode="json") for item in company.evidence]
         return {
             "mission_id": mission_id,
-            "company_name": company.company_name,
-            "website": company.website,
-            "summary": company.summary,
-            "industry": company.industry,
-            "country": company.country,
-            "headquarters": company.headquarters,
-            "products": company.products,
-            "services": company.services,
-            "technologies": company.technologies,
-            "customer_logos": company.customer_logos,
-            "use_cases": company.use_cases,
-            "careers_page": company.careers_page,
-            "about_page": company.about_page,
-            "evidence": [item.model_dump(mode="json") for item in company.evidence],
-            "metadata": company.metadata,
+            "source": "market_discovery",
+            "title": company.company_name,
+            "url": company.website,
+            "domain": self._domain(company.website),
+            "snippet": company.summary,
+            "firecrawl_markdown": self._markdown(company),
+            "firecrawl_metadata": {
+                "company": company.model_dump(mode="json"),
+                "evidence": evidence,
+            },
+            "search_score": self._search_score(company),
         }
 
+    def _domain(self, url: str) -> str | None:
+        parsed = urlparse(url if "://" in url else f"https://{url}")
+        return parsed.netloc or None
+
+    def _markdown(self, company: DiscoveredCompany) -> str | None:
+        parts = [
+            company.summary,
+            f"Industry: {company.industry}" if company.industry else None,
+            f"Country: {company.country}" if company.country else None,
+            f"Products: {', '.join(company.products)}" if company.products else None,
+            f"Services: {', '.join(company.services)}" if company.services else None,
+            f"Technologies: {', '.join(company.technologies)}" if company.technologies else None,
+            f"Use cases: {', '.join(company.use_cases)}" if company.use_cases else None,
+        ]
+        markdown = "\n".join(part for part in parts if part)
+        return markdown or None
+
+    def _search_score(self, company: DiscoveredCompany) -> float | None:
+        score = company.metadata.get("search_score")
+        return float(score) if isinstance(score, int | float) else None

@@ -24,9 +24,7 @@ class BusinessDNARepository:
         if not profiles:
             return []
         payload = [self._row(mission_id, profile) for profile in profiles]
-        result = await asyncio.to_thread(
-            lambda: self.client.table(self.table_name).upsert(payload, on_conflict="mission_id,website").execute()
-        )
+        result = await asyncio.to_thread(lambda: self.client.table(self.table_name).insert(payload).execute())
         data = getattr(result, "data", result)
         if not isinstance(data, list):
             raise BusinessDNAPersistenceError("Business DNA upsert returned an unexpected response.")
@@ -72,9 +70,10 @@ class BusinessDNARepository:
             "technology_signals": profile.technology_signals,
             "digital_transformation_signals": profile.digital_transformation_signals,
             "buying_personas": profile.buying_personas,
-            "likely_use_cases": profile.likely_use_cases,
-            "business_strengths": profile.business_strengths,
-            "business_risks": profile.business_risks,
+            "use_cases": profile.use_cases,
+            "strengths": profile.strengths,
+            "risks": profile.risks,
+            "evidence": profile.evidence,
             "confidence": profile.confidence,
             "reasoning": profile.reasoning,
         }

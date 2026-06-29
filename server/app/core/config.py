@@ -33,7 +33,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("LLM_PROVIDER", "AION_LLM_PROVIDER"),
     )
     llm_model: str = Field(
-        default="gemini-2.5-pro",
+        default="gemini-2.5-flash-lite",
         validation_alias=AliasChoices("LLM_MODEL", "AION_LLM_MODEL"),
     )
     supabase_url: str | None = Field(

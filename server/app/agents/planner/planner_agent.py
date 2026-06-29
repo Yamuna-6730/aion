@@ -10,7 +10,7 @@ from app.agents.base.task import AgentTask
 from app.core.logger import agent_logger
 from app.llm import LLMManager, llm_manager
 from app.llm.exceptions import LLMError, ParsingError
-from app.schemas.planner import AgentCapability, ExecutionBlueprint
+from app.schemas.planner import AgentCapability, ExecutionBlueprint, GraphEdge, GraphNode, GraphNodeData, GraphPosition
 from app.utils.graph_builder import normalize_agent_name
 
 
@@ -113,16 +113,38 @@ class PlannerAgent(BaseAgent):
         registered = {normalize_agent_name(str(agent.get("name", ""))) for agent in available_agents}
         selected = self._recommended_agents_from_mission(mission)
         selected = [agent for agent in selected if agent in registered and agent != self.name]
+        default_pipeline = [agent for agent in ["market", "business_dna", "recommendation"] if agent in registered]
+        if default_pipeline:
+            selected = default_pipeline
         if "recommendation" in registered and "recommendation" not in selected:
             selected.append("recommendation")
         if not selected and "recommendation" in registered:
             selected = ["recommendation"]
+        nodes = [
+            GraphNode(
+                id=agent,
+                position=GraphPosition(x=index * 220, y=0),
+                data=GraphNodeData(
+                    label=" ".join(part.capitalize() for part in agent.split("_")),
+                    agent_name=agent,
+                    priority=4 - index,
+                    parallel=False,
+                    status="PENDING",
+                    critical=True,
+                ),
+            )
+            for index, agent in enumerate(selected)
+        ]
+        edges = [
+            GraphEdge(id=f"{source}-{target}", source=source, target=target)
+            for source, target in zip(selected, selected[1:], strict=False)
+        ]
 
         return ExecutionBlueprint(
             mission_id=mission_id,
             selected_agents=selected,
             execution_order=selected,
-            parallel_groups=[selected[:-1], selected[-1:]] if len(selected) > 1 else [selected],
+            parallel_groups=[[agent] for agent in selected],
             planner_reasoning=(
                 "Fallback planner blueprint generated because the LLM planner response could not be parsed. "
                 f"Original planner error: {reason}"
@@ -131,6 +153,8 @@ class PlannerAgent(BaseAgent):
             estimated_cost=0.0,
             confidence=0.5,
             execution_constraints={"fallback": True},
+            nodes=nodes,
+            edges=edges,
         )
 
     def _recommended_agents_from_mission(self, mission: dict) -> list[str]:

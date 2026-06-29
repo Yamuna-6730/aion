@@ -82,11 +82,11 @@ class MarketDiscoveryAgent(BaseAgent):
 
         for i, response in enumerate(search_responses, start=1):
             print(f"\n[{i}]")
-            print("Query :", response.query)
-            print("Provider :", response.provider)
+            print("Query :", self._console_text(response.query))
+            print("Provider :", self._console_text(response.provider))
             for r in response.results:
-                print(" Title :", getattr(r, "title", None))
-                print(" URL   :", getattr(r, "url", None))
+                print(" Title :", self._console_text(getattr(r, "title", None)))
+                print(" URL   :", self._console_text(getattr(r, "url", None)))
                 print(" Score :", getattr(r, "score", None))
 
         print("=" * 80 + "\n")
@@ -108,12 +108,12 @@ class MarketDiscoveryAgent(BaseAgent):
         print("=" * 80)
 
         for page in scrape_responses:
-            print("\nURL:", getattr(page, "url", None))
+            print("\nURL:", self._console_text(getattr(page, "url", None)))
             title = getattr(getattr(page, "page", None), "title", None)
-            print("TITLE:", title)
+            print("TITLE:", self._console_text(title))
 
             content = getattr(getattr(page, "page", None), "content", "") or ""
-            print(content[:1000])   # first 1000 characters only
+            print(self._console_text(content[:1000]))
 
         print("=" * 80 + "\n")
         scraped_pages, skipped_pages = self._scraped_page_payloads(scrape_responses)
@@ -150,6 +150,8 @@ class MarketDiscoveryAgent(BaseAgent):
                 reason="no_scraped_pages_with_content",
             )
         companies = self._deduplicate_companies([self._with_metadata(company) for company in extraction.companies]) if extraction else []
+        if not companies:
+            companies = self._fallback_companies(candidates, scraped_pages)
         if not companies:
             agent_logger.warning(
                 "Market discovery extracted zero companies",
@@ -315,6 +317,42 @@ class MarketDiscoveryAgent(BaseAgent):
                 selected[key] = company
         return list(selected.values())
 
+    def _fallback_companies(
+        self,
+        candidates: list[SearchResult],
+        scraped_pages: list[dict[str, Any]],
+    ) -> list[DiscoveredCompany]:
+        pages_by_domain = {
+            self._domain_key(self._normalize_url(str(page.get("url") or ""))): page
+            for page in scraped_pages
+            if isinstance(page, dict)
+        }
+        companies: list[DiscoveredCompany] = []
+        for candidate in candidates:
+            page = pages_by_domain.get(self._domain_key(candidate.url)) or {}
+            title = str(page.get("title") or candidate.title or self._domain_key(candidate.url) or candidate.url)
+            content = str(page.get("content") or candidate.content or "")
+            summary = content[:500] if content else None
+            companies.append(
+                DiscoveredCompany(
+                    company_name=title[:200],
+                    website=candidate.url,
+                    summary=summary,
+                    evidence=[
+                        {
+                            "source": "search",
+                            "url": candidate.url,
+                            "fact": candidate.content or candidate.title or "Discovered from market search result.",
+                        }
+                    ],
+                    metadata={
+                        "discovered_from": "tavily",
+                        "fallback_extraction": True,
+                        "search_score": candidate.score,
+                    },
+                )
+            )
+        return self._deduplicate_companies(companies)
 
     def _normalize_url(self, url: str) -> str:
         parsed = urlparse(url if "://" in url else f"https://{url}")
@@ -350,3 +388,6 @@ class MarketDiscoveryAgent(BaseAgent):
 
     def _compact_spaces(self, value: str) -> str:
         return " ".join(value.split())
+
+    def _console_text(self, value: Any) -> str:
+        return str(value or "").encode("ascii", errors="ignore").decode("ascii")

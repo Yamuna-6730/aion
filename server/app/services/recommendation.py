@@ -52,10 +52,11 @@ class RecommendationService:
         market_discovery_memory = self._build_market_memory(market_rows)
         business_dna_memory = self._build_dna_memory(business_dna_rows)
 
-        shared_memory: dict[str, Any] = {
+        shared_memory: dict[str, Any] = dict(mission.get("shared_memory") or {})
+        shared_memory.update({
             "market_discovery": market_discovery_memory,
             "business_dna": business_dna_memory,
-        }
+        })
 
         task = AgentTask(
             mission_id=mission_id,
@@ -115,17 +116,21 @@ class RecommendationService:
     def _build_market_memory(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
         companies = []
         for row in rows:
+            metadata = row.get("firecrawl_metadata") or {}
+            company = metadata.get("company") if isinstance(metadata, dict) else None
+            if not isinstance(company, dict):
+                company = {"company_name": row.get("title"), "website": row.get("url"), "summary": row.get("snippet")}
             companies.append({
-                "company_name": row.get("company_name"),
-                "website": row.get("website"),
-                "summary": row.get("summary"),
-                "industry": row.get("industry"),
-                "country": row.get("country"),
-                "products": row.get("products") or [],
-                "services": row.get("services") or [],
-                "technologies": row.get("technologies") or [],
-                "use_cases": row.get("use_cases") or [],
-                "evidence": row.get("evidence") or [],
+                "company_name": company.get("company_name"),
+                "website": company.get("website"),
+                "summary": company.get("summary"),
+                "industry": company.get("industry"),
+                "country": company.get("country"),
+                "products": company.get("products") or [],
+                "services": company.get("services") or [],
+                "technologies": company.get("technologies") or [],
+                "use_cases": company.get("use_cases") or [],
+                "evidence": company.get("evidence") or [],
             })
         return {"companies": companies, "company_count": len(companies)}
 
@@ -144,9 +149,10 @@ class RecommendationService:
                 "technology_signals": row.get("technology_signals") or [],
                 "digital_transformation_signals": row.get("digital_transformation_signals") or [],
                 "buying_personas": row.get("buying_personas") or [],
-                "likely_use_cases": row.get("likely_use_cases") or [],
-                "business_strengths": row.get("business_strengths") or [],
-                "business_risks": row.get("business_risks") or [],
+                "use_cases": row.get("use_cases") or [],
+                "strengths": row.get("strengths") or [],
+                "risks": row.get("risks") or [],
+                "evidence": row.get("evidence") or [],
                 "confidence": row.get("confidence") or 0.0,
                 "reasoning": row.get("reasoning"),
             })

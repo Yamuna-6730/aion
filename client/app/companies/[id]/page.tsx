@@ -202,7 +202,10 @@ export default function CompanyDetailPage() {
   };
 
   const handleDownloadBrief = () => {
-    addNotification(`Exporting executive brief for ${company.name} as presentation layout...`, 'success');
+    const link = document.createElement("a");
+    link.href = "/Seimens.png";
+    link.download = "Siemens-Executive-Brief.png";
+    link.click();
   };
 
   return (
@@ -603,13 +606,16 @@ export default function CompanyDetailPage() {
 
               {/* Actions */}
               <div className="flex justify-between items-center">
-                <span className="text-xs text-zinc-500 font-mono">Format: Presentation Brief Slide</span>
+                <span className="text-xs text-zinc-500 font-mono">
+                  Format: Presentation Brief Slide
+                </span>
+
                 <button
                   onClick={handleDownloadBrief}
                   className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-accent-blue to-accent-purple text-white text-xs font-semibold rounded-lg hover:shadow-md transition-all cursor-pointer"
                 >
                   <FileText size={14} />
-                  <span>Download Briefing Slides</span>
+                  <span>Download Briefing Slide</span>
                 </button>
               </div>
             </div>

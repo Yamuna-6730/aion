@@ -106,6 +106,8 @@ class BusinessDNAAgent(BaseAgent):
 
         # Deduplicate by website
         profiles = self._deduplicate_profiles(profiles)
+        if not profiles and companies_raw:
+            profiles = self._fallback_profiles(companies_raw)
 
         execution_time = time.perf_counter() - started
         output = BusinessDNAOutput(
@@ -176,3 +178,26 @@ class BusinessDNAAgent(BaseAgent):
         if not profiles:
             return 0.0
         return round(sum(p.confidence for p in profiles) / len(profiles), 3)
+
+    def _fallback_profiles(self, companies: list[Any]) -> list[BusinessDNAProfile]:
+        profiles: list[BusinessDNAProfile] = []
+        for company in companies:
+            if not isinstance(company, dict):
+                continue
+            profiles.append(
+                BusinessDNAProfile(
+                    company_name=str(company.get("company_name") or company.get("title") or "Unknown company"),
+                    website=str(company.get("website") or company.get("url") or ""),
+                    industry=company.get("industry"),
+                    country=company.get("country"),
+                    business_summary=company.get("summary"),
+                    technology_signals=company.get("technologies") or [],
+                    use_cases=company.get("use_cases") or [],
+                    strengths=company.get("strengths") or ["Discovered from market evidence"],
+                    risks=company.get("risks") or ["Requires manual validation because profile used fallback extraction"],
+                    evidence=company.get("evidence") or [],
+                    confidence=0.35,
+                    reasoning="Fallback profile generated from market discovery evidence because Business DNA LLM extraction produced no profiles.",
+                )
+            )
+        return self._deduplicate_profiles(profiles)

@@ -13,7 +13,13 @@ from app.core.exceptions import AionError
 from app.core.logger import app_logger
 from app.schemas.planner import ExecutionBlueprint, ExecutionContext, PlannerRunResponse
 from app.schemas.strategy import MissionStatus
+from app.schemas.market_discovery import MarketDiscoveryOutput
+from app.schemas.business_dna import BusinessDNAOutput
+from app.schemas.recommendations import RecommendationOutput
 from app.supabase.repositories import MissionRepository
+from app.supabase.repositories.market_discovery_repository import MarketDiscoveryRepository
+from app.supabase.repositories.business_dna_repository import BusinessDNARepository
+from app.supabase.repositories.recommendation_repository import RecommendationRepository
 from app.utils.graph_builder import build_execution_graph, normalize_agent_name
 from app.utils.graph_validator import validate_execution_graph
 
@@ -33,6 +39,9 @@ class PlannerService:
         self.agent = agent or PlannerAgent()
         self.mission_repository = mission_repository or MissionRepository()
         self.registry = registry or self._default_registry()
+        self.market_repository = MarketDiscoveryRepository()
+        self.business_dna_repository = BusinessDNARepository()
+        self.recommendation_repository = RecommendationRepository()
 
     async def run_planner(self, mission_id: str) -> PlannerRunResponse:
         started = time.perf_counter()
@@ -54,6 +63,10 @@ class PlannerService:
 
         execution_graph = self._graph_payload(blueprint)
         await self.mission_repository.update_planner(mission_id, blueprint)
+        await self.mission_repository.update_shared_memory(
+            mission_id,
+            {"planner": blueprint.model_dump(mode="json")},
+        )
         await self.mission_repository.update_execution_graph(mission_id, execution_graph)
         await self.mission_repository.update_estimates(
             mission_id,
@@ -62,7 +75,7 @@ class PlannerService:
             confidence=blueprint.confidence,
         )
 
-        await self.mission_repository.update_status(mission_id, MissionStatus.EXECUTION_RUNNING)
+        await self.mission_repository.update_status(mission_id, MissionStatus.EXECUTING_AGENTS)
         context = ExecutionContext(
             mission=mission,
             strategy=mission.get("strategy") or {},
@@ -142,13 +155,39 @@ class PlannerService:
                     app_logger.warning("Non-critical planner node failed", mission_id=mission_id, node_id=node_id)
                 else:
                     completed.add(node_id)
-                    context.shared_memory[node_id] = result
+                    output = self._node_output(result)
+                    memory_key = self._memory_key(node_id)
+                    context.shared_memory[memory_key] = output
+                    await self._persist_node_output(mission_id, memory_key, output)
                     if hasattr(self.mission_repository, "update_shared_memory"):
                         await self.mission_repository.update_shared_memory(mission_id, context.shared_memory)
                     self._set_node_status(blueprint, node_id, "COMPLETED")
             await self.mission_repository.update_execution_graph(mission_id, self._graph_payload(blueprint))
 
         return context.shared_memory
+
+    def _node_output(self, result: Any) -> dict[str, Any]:
+        if isinstance(result, dict) and isinstance(result.get("output"), dict):
+            return result["output"]
+        return result if isinstance(result, dict) else {}
+
+    def _memory_key(self, node_id: str) -> str:
+        if node_id in {"market", "market_discovery"}:
+            return "market_discovery"
+        if node_id in {"recommendations", "recommendation"}:
+            return "recommendation"
+        return node_id
+
+    async def _persist_node_output(self, mission_id: str, memory_key: str, output: dict[str, Any]) -> None:
+        if memory_key == "market_discovery":
+            market_output = MarketDiscoveryOutput.model_validate(output)
+            await self.market_repository.save_results(mission_id, market_output.companies)
+        elif memory_key == "business_dna":
+            dna_output = BusinessDNAOutput.model_validate(output)
+            await self.business_dna_repository.save_results(mission_id, dna_output.profiles)
+        elif memory_key == "recommendation":
+            recommendation_output = RecommendationOutput.model_validate(output)
+            await self.recommendation_repository.save_results(mission_id, recommendation_output.companies)
 
     async def _execute_node(
         self,

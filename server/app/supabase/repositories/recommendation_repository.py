@@ -24,9 +24,7 @@ class RecommendationRepository:
         if not companies:
             return []
         payload = [self._row(mission_id, company) for company in companies]
-        result = await asyncio.to_thread(
-            lambda: self.client.table(self.table_name).upsert(payload, on_conflict="mission_id,website").execute()
-        )
+        result = await asyncio.to_thread(lambda: self.client.table(self.table_name).insert(payload).execute())
         data = getattr(result, "data", result)
         if not isinstance(data, list):
             raise RecommendationPersistenceError("Recommendation upsert returned an unexpected response.")
@@ -73,4 +71,5 @@ class RecommendationRepository:
             "recommended_personas": company.recommended_personas,
             "recommended_use_cases": company.recommended_use_cases,
             "next_action": company.next_action,
+            "scoring_breakdown": company.scoring_breakdown,
         }
