@@ -1,4 +1,4 @@
-# AION – Agentic AI Operating System
+# AION – Automated Intelligence Operating Network
 
 ## Where Autonomous Intelligence Meets Enterprise Growth
 
