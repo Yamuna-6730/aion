@@ -12,6 +12,9 @@ AION is an Agentic AI Operating System that transforms a simple business objecti
     * Yamuna Latchipatruni
     * Rashmi Sharma
     * Dharani Alla
+ 
+## Github 
+https://github.com/Yamuna-6730/aion
 
 ## Problem Statement
 
@@ -184,7 +187,7 @@ AION
 ### Clone Repository
 
 ```bash
-git clone [https://github.com/](https://github.com/)<username>/<repository-name>.git
+git clone https://github.com/Yamuna-6730/aion
 cd AION
 ```
 
