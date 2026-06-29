@@ -143,6 +143,8 @@ class PlannerService:
                 else:
                     completed.add(node_id)
                     context.shared_memory[node_id] = result
+                    if hasattr(self.mission_repository, "update_shared_memory"):
+                        await self.mission_repository.update_shared_memory(mission_id, context.shared_memory)
                     self._set_node_status(blueprint, node_id, "COMPLETED")
             await self.mission_repository.update_execution_graph(mission_id, self._graph_payload(blueprint))
 

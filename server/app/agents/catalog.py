@@ -2,6 +2,9 @@ from app.agents.base.enums import AgentState
 from app.agents.base.base_agent import BaseAgent
 from app.agents.base.response import AgentResponse
 from app.agents.base.task import AgentTask
+from app.agents.market_discovery import MarketDiscoveryAgent
+from app.agents.business_dna.business_dna_agent import BusinessDNAAgent as _RealBusinessDNAAgent
+from app.agents.recommendation.recommendation_agent import RecommendationAgent as _RealRecommendationAgent
 from app.core.constants import DEFAULT_AGENT_PRIORITY, DEFAULT_AGENT_VERSION
 
 
@@ -46,11 +49,6 @@ class MockAgent(BaseAgent):
 class PlannerAgent(MockAgent):
     name = "planner"
     category = "planner"
-
-
-class MarketAgent(MockAgent):
-    name = "market"
-    category = "discovery"
 
 
 class NewsAgent(MockAgent):
@@ -138,9 +136,7 @@ class TechStackAgent(MockAgent):
     category = "intelligence"
 
 
-class BusinessDNAAgent(MockAgent):
-    name = "business_dna"
-    category = "intelligence"
+BusinessDNAAgent = _RealBusinessDNAAgent
 
 
 class RelationshipGraphAgent(MockAgent):
@@ -188,9 +184,7 @@ class FinanceAgent(MockAgent):
     category = "recommendation"
 
 
-class RecommendationAgent(MockAgent):
-    name = "recommendation"
-    category = "recommendation"
+RecommendationAgent = _RealRecommendationAgent
 
 
 class SimulationAgent(MockAgent):
@@ -220,7 +214,7 @@ class LoggerAgent(MockAgent):
 
 INITIAL_AGENT_CLASSES = (
     PlannerAgent,
-    MarketAgent,
+    MarketDiscoveryAgent,
     NewsAgent,
     HiringAgent,
     FundingAgent,

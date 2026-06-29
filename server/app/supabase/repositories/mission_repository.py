@@ -131,6 +131,15 @@ class MissionRepository:
             },
         )
 
+    async def update_shared_memory(self, mission_id: str, shared_memory: dict[str, Any]) -> dict[str, Any]:
+        return await self._update(
+            mission_id,
+            {
+                "shared_memory": shared_memory,
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
     async def list_missions(self) -> list[dict[str, Any]]:
         result = await asyncio.to_thread(
             lambda: self.client.table(self.table_name).select("*").order("updated_at", desc=True).execute()

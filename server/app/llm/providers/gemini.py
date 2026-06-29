@@ -44,6 +44,14 @@ class GeminiProvider(BaseLLM):
                 },
             )
             output = self._extract_text(response)
+            print("\n" + "=" * 80)
+            print("GEMINI RAW RESPONSE")
+            print("=" * 80)
+
+            print(output)
+
+            print("=" * 80 + "\n")
+            
             llm_logger.debug(
                 "Gemini raw response extracted",
                 provider=self.provider_name,

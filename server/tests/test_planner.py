@@ -136,6 +136,11 @@ class FakeRepository:
         self.metadata = metadata
         return {"id": mission_id}
 
+    async def update_shared_memory(self, mission_id: str, shared_memory: dict[str, Any]) -> dict[str, Any]:
+        self.metadata = self.metadata or {}
+        self.metadata["shared_memory"] = shared_memory
+        return {"id": mission_id}
+
     async def update_recommendations(self, mission_id: str, recommendations: dict[str, Any]) -> dict[str, Any]:
         self.recommendations = recommendations
         return {"id": mission_id}

@@ -20,12 +20,20 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("GOOGLE_API_KEY", "AION_GOOGLE_API_KEY"),
     )
+    tavily_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TAVILY_API_KEY", "AION_TAVILY_API_KEY"),
+    )
+    firecrawl_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("FIRECRAWL_API_KEY", "AION_FIRECRAWL_API_KEY"),
+    )
     llm_provider: str = Field(
         default="gemini",
         validation_alias=AliasChoices("LLM_PROVIDER", "AION_LLM_PROVIDER"),
     )
     llm_model: str = Field(
-        default="gemini-2.5-flash-lite",
+        default="gemini-2.5-pro",
         validation_alias=AliasChoices("LLM_MODEL", "AION_LLM_MODEL"),
     )
     supabase_url: str | None = Field(

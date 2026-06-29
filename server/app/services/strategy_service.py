@@ -59,3 +59,35 @@ class StrategyService:
             await self.mission_repository.update_status(mission_id, MissionStatus.STRATEGY_FAILED)
             app_logger.exception("Strategy analysis failed", mission_id=mission_id)
             raise
+
+    async def run_strategy(self, mission_id: str) -> dict[str, Any]:
+        mission = await self.mission_repository.get_mission(mission_id)
+        objective = str(mission.get("objective") or "")
+        title = str(mission.get("title") or mission_id)
+        if not objective:
+            raise StrategyServiceError("Mission objective is required to run strategy.")
+
+        task = AgentTask(
+            mission_id=mission_id,
+            task_id=f"strategy_{uuid4().hex}",
+            agent_name=self.agent.name,
+            objective=objective,
+            context={"title": title},
+        )
+
+        try:
+            await self.mission_repository.update_status(mission_id, MissionStatus.STRATEGY_RUNNING)
+            response = await self.agent.run(task)
+            intelligence = MissionIntelligence.model_validate(response.output)
+            await self.mission_repository.update_strategy(mission_id, intelligence)
+            app_logger.info(
+                "Strategy analysis persisted",
+                mission_id=mission_id,
+                confidence=intelligence.confidence,
+                execution_time=response.execution_time,
+            )
+            return intelligence.model_dump(mode="json")
+        except Exception:
+            await self.mission_repository.update_status(mission_id, MissionStatus.STRATEGY_FAILED)
+            app_logger.exception("Strategy analysis failed", mission_id=mission_id)
+            raise
